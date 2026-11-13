@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "quadSenseBaseUrl": "http://localhost:5176",
+  "pollIntervalMs": 33,
+  "memory": {
+    "processName": "ProjectWingman-Win64-Shipping",
+    "executableSha256": "C0994C8014232B42ED318B459321C71AFD2E01B7CF9C61ACAC4201D32AA6D76D",
+    "fields": {
+      "inMission": { "root": "0x95C4A68", "offsets": ["0x180", "0x38", "0x0", "0x30", "0x2A0"], "type": "pointerPresent" },
+      "paused": { "root": "0x95C4A68", "offsets": ["0x180", "0x38", "0x0", "0x30", "0x2A0", "0x7CE"], "type": "byte" },
+      "health": { "root": "0x95C4A68", "offsets": ["0x180", "0x38", "0x0", "0x30", "0x2A0", "0x764"], "scale": 0.01 },
+      "thrust": { "root": "0x95C4A68", "offsets": ["0x180", "0x38", "0x0", "0x30", "0x2A0", "0xA20"] },
+      "targetLocked": { "root": "0x95C4A68", "offsets": ["0x180", "0x38", "0x0", "0x30", "0x2A0", "0x888"], "type": "countPresent" },
+      "missileWarning": { "root": "0x95C4A68", "offsets": ["0x180", "0x38", "0x0", "0x30", "0x2A0", "0x968"], "type": "countPresent" },
+      "speedCmPerSecond": { "root": "0x95C4A68", "offsets": ["0x180", "0x38", "0x0", "0x30", "0x2A0", "0x728"] },
+      "pitchRateDegPerSecond": { "root": "0x95C4A68", "offsets": ["0x180", "0x38", "0x0", "0x30", "0x2A0", "0x730"] },
+      "yawRateDegPerSecond": { "root": "0x95C4A68", "offsets": ["0x180", "0x38", "0x0", "0x30", "0x2A0", "0x72C"] }
+    }
+  }
+}

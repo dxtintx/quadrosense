@@ -43,6 +43,7 @@ public sealed class ModService : BackgroundService
     public bool Unregister(string modId)
     {
         _activeOverrides.TryRemove(modId, out _);
+        _output.RemoveModOverride(modId);
         return _registrations.TryRemove(modId, out _);
     }
 
@@ -86,10 +87,10 @@ public sealed class ModService : BackgroundService
             {
                 if (now >= ov.ExpiresAt)
                 {
-                    _activeOverrides.TryRemove(modId, out _);
+                    ((ICollection<KeyValuePair<string, ActiveOverride>>)_activeOverrides)
+                        .Remove(new(modId, ov));
                     _log.LogDebug("Mod override expired for {ModId}", modId);
-                    // Revert: send a "null" event to clear this mod's influence
-                    // A proper implementation would merge remaining active overrides
+                    // Output service independently expires its leases and merges remaining mods.
                 }
             }
         }

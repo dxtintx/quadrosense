@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>QuadroSense.ProjectWingman</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Update="project-wingman.json;manifest.json;README.md"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest"
+          ExcludeFromSingleFile="true" />
+  </ItemGroup>
+  <Target Name="ValidateIntegrationPackage" AfterTargets="Publish">
+    <Error Condition="!Exists('$(PublishDir)project-wingman.json')" Text="Integration package is missing project-wingman.json next to the executable." />
+    <Error Condition="!Exists('$(PublishDir)manifest.json')" Text="Integration package is missing manifest.json next to the executable." />
+  </Target>
+</Project>

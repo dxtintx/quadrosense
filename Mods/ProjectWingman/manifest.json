@@ -1,0 +1,12 @@
+{
+  "id": "project-wingman",
+  "name": "QuadroSense Project Wingman Integration",
+  "version": "0.2.0-dev",
+  "quadSenseApi": "1.0",
+  "gameExecutable": "ProjectWingman-Win64-Shipping.exe",
+  "supportedBuild": "2.1.0",
+  "executableSha256": "C0994C8014232B42ED318B459321C71AFD2E01B7CF9C61ACAC4201D32AA6D76D",
+  "entryPoint": "QuadroSense.ProjectWingman.exe",
+  "launchMode": "standalone",
+  "status": "development"
+}

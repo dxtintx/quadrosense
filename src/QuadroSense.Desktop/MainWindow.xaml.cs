@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -10,6 +11,7 @@ public sealed partial class MainWindow : Window
 {
     private readonly QuadroSenseApi _api = new();
     private readonly LocalApiHost _localApi = new();
+    private readonly GameIntegrationLauncher _integrationLauncher = new();
     private QuadroSense.Api.Models.ControllerConfiguration? _configuration;
     private bool _refreshing;
     private bool _closed;
@@ -41,9 +43,10 @@ public sealed partial class MainWindow : Window
             _closing = true;
             _refreshTimer.Stop();
             _gyroTimer?.Stop();
-            try { await _localApi.DisposeAsync(); }
+            try { await _integrationLauncher.DisposeAsync(); }
             finally
             {
+                await _localApi.DisposeAsync();
                 _api.Dispose();
                 _closed = true;
                 Close();
@@ -707,15 +710,58 @@ public sealed partial class MainWindow : Window
 
     private UIElement BuildIntegrations()
     {
-        var root = PageStack(); root.Children.Add(InlineNote("Registered mods", "Local game integrations can send temporary trigger, haptic and lighting overrides. Expiring overrides revert automatically."));
-        var panel = Panel(); panel.Children.Add(Kicker("LOCAL MODS"));
-        var list = new StackPanel { Spacing = 8, Margin = new Thickness(0, 8, 0, 14) }; panel.Children.Add(list); _ = LoadMods(list);
+        var root = PageStack(); root.Children.Add(InlineNote("Installed integrations", "QuadroSense scans the Mods folders and starts a compatible adapter automatically when its game appears."));
+        var panel = Panel(); panel.Children.Add(Kicker("INSTALLED INTEGRATIONS"));
+        var list = new StackPanel { Spacing = 8, Margin = new Thickness(0, 8, 0, 14) }; panel.Children.Add(list); _ = LoadInstalledIntegrations(list);
+        var refreshInstalled = new Button { Content = "Refresh integrations" };
+        refreshInstalled.Click += (_, _) => ShowPage("Integrations");
+        panel.Children.Add(refreshInstalled);
+        root.Children.Add(panel);
+
+        var registeredPanel = Panel(); registeredPanel.Children.Add(Kicker("REGISTERED MODS"));
+        var registeredList = new StackPanel { Spacing = 8, Margin = new Thickness(0, 8, 0, 14) }; registeredPanel.Children.Add(registeredList); _ = LoadMods(registeredList);
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12 };
         var name = new TextBox { Header = "Mod name", PlaceholderText = "For example, GameEffects", Width = 260 };
         var version = new TextBox { Header = "Version", Text = "1.0.0", Width = 140 };
         var register = new Button { Content = "Register mod", VerticalAlignment = VerticalAlignment.Bottom };
         register.Click += async (_, _) => { if (string.IsNullOrWhiteSpace(name.Text)) { SetStatus("Enter a mod name", InfoBarSeverity.Warning); return; } try { await _api.RegisterModAsync(name.Text.Trim(), version.Text.Trim()); SetStatus("Mod registered", InfoBarSeverity.Success); ShowPage("Integrations"); } catch (Exception ex) { SetStatus(ShortError(ex), InfoBarSeverity.Error); } };
-        row.Children.Add(name); row.Children.Add(version); row.Children.Add(register); panel.Children.Add(row); root.Children.Add(panel); return root;
+        row.Children.Add(name); row.Children.Add(version); row.Children.Add(register); registeredPanel.Children.Add(row); root.Children.Add(registeredPanel); return root;
+    }
+
+    private async Task LoadInstalledIntegrations(StackPanel list)
+    {
+        await Task.Yield();
+        var integrations = IntegrationDiscovery.FindAll();
+        if (integrations.Count == 0)
+        {
+            list.Children.Add(new TextBlock { Text = "No installed integrations found in Mods or ModsIntegrations.", FontSize = 13, Foreground = Brush("InkSecondaryBrush") });
+            return;
+        }
+        foreach (var integration in integrations)
+        {
+            var row = new Grid { ColumnSpacing = 16, Margin = new Thickness(0, 8, 0, 8) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var details = new StackPanel { Spacing = 3 };
+            details.Children.Add(new TextBlock { Text = $"{integration.Name}  ·  v{integration.Version}", FontSize = 15, Foreground = Brush("InkPrimaryBrush") });
+            details.Children.Add(new TextBlock { Text = $"Game: {integration.GameExecutable}  ·  Build: {integration.SupportedBuild}", FontSize = 12, Foreground = Brush("InkSecondaryBrush") });
+            details.Children.Add(new TextBlock { Text = $"{integration.Status}  ·  Autostart when game launches", FontSize = 12, Foreground = Brush(integration.Status == "Ready" ? "AccentBrush" : "InkSecondaryBrush") });
+            row.Children.Add(details);
+            var open = new Button { Content = "Open folder", VerticalAlignment = VerticalAlignment.Center };
+            open.Click += (_, _) => OpenIntegrationFolder(integration.ManifestPath);
+            Grid.SetColumn(open, 1); row.Children.Add(open);
+            list.Children.Add(row);
+            list.Children.Add(new Border { Height = 1, Background = Brush("HairlineBrush") });
+        }
+    }
+
+    private static void OpenIntegrationFolder(string manifestPath)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{manifestPath}\"") { UseShellExecute = true });
+        }
+        catch { }
     }
 
     private async Task LoadMods(StackPanel list)

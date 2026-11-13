@@ -29,6 +29,10 @@ public sealed class ControllerOutputService : IDisposable
     private volatile bool         _shuttingDown;
     private int                   _currentRumbleLow;
     private int                   _currentRumbleHigh;
+    private sealed record Override(ModEvent Event, long ExpiresAt, long Order);
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, Override> _modOverrides = new();
+    private long _overrideOrder;
+    private int _restoreOneShot;
 
     public ControllerOutputService(
         ILogger<ControllerOutputService> log,
@@ -118,7 +122,18 @@ public sealed class ControllerOutputService : IDisposable
             while (await timer.WaitForNextTickAsync(_effectsCts.Token).ConfigureAwait(false))
             {
                 var cfg = _lighting;
-                if (!_device.IsOpen || string.Equals(cfg.DynamicEffect, "none", StringComparison.OrdinalIgnoreCase)) continue;
+                if (!_device.IsOpen) continue;
+                // Keep leases alive through every output source and restore base state on expiry.
+                var expired = false;
+                foreach (var entry in _modOverrides)
+                    if (Environment.TickCount64 >= entry.Value.ExpiresAt)
+                        expired |= ((ICollection<KeyValuePair<string, Override>>)_modOverrides).Remove(entry);
+                if (string.Equals(cfg.DynamicEffect, "none", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (expired || Interlocked.Exchange(ref _restoreOneShot, 0) != 0 || !_modOverrides.IsEmpty)
+                        await FlushAsync().ConfigureAwait(false);
+                    continue;
+                }
 
                 long frame = Interlocked.Increment(ref _effectFrame);
                 double phase = frame * Math.Clamp(cfg.EffectSpeed / 255.0, 0.02, 1.0) * 0.035;
@@ -179,11 +194,21 @@ public sealed class ControllerOutputService : IDisposable
     /// <summary>Apply a mod event override.</summary>
     public Task ApplyModEventAsync(ModEvent ev)
     {
-        var lt = ev.LeftTrigger  ?? _leftTrigger;
-        var rt = ev.RightTrigger ?? _rightTrigger;
-        var h  = ev.Haptics      ?? _haptics;
-        var l  = ev.Lighting     ?? _lighting;
-        return FlushAsync(lt, rt, h, l);
+        if (ev.DurationMs == 0)
+        {
+            _modOverrides.TryRemove(ev.ModId, out _);
+            Interlocked.Exchange(ref _restoreOneShot, 1);
+            return FlushAsync(ev.LeftTrigger, ev.RightTrigger, ev.Haptics, ev.Lighting);
+        }
+        var expiry = ev.DurationMs == -1 ? long.MaxValue : Environment.TickCount64 + Math.Max(1, ev.DurationMs);
+        _modOverrides[ev.ModId] = new(ev, expiry, Interlocked.Increment(ref _overrideOrder));
+        return FlushAsync();
+    }
+
+    public void RemoveModOverride(string modId)
+    {
+        _modOverrides.TryRemove(modId, out _);
+        _ = FlushAsync();
     }
 
     private async Task FlushAsync(
@@ -203,6 +228,16 @@ public sealed class ControllerOutputService : IDisposable
             var rt = rightTrigger ?? _rightTrigger;
             var h  = haptics      ?? _haptics;
             var l  = lighting     ?? _lighting;
+
+            if (!shutdownReset)
+                foreach (var entry in _modOverrides.Values.OrderBy(x => x.Order))
+                {
+                    if (Environment.TickCount64 >= entry.ExpiresAt) continue;
+                    lt = entry.Event.LeftTrigger ?? lt;
+                    rt = entry.Event.RightTrigger ?? rt;
+                    h = entry.Event.Haptics ?? h;
+                    l = entry.Event.Lighting ?? l;
+                }
 
             byte[] report = _connType == "Bluetooth"
                 ? DualSenseReportBuilder.BuildBluetooth(lt, rt, h, l)
