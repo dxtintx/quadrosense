@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/QuadroSense.Api/QuadroSense.Api.csproj" />
+    <Project Path="src/QuadroSense.Desktop/QuadroSense.Desktop.csproj" />
+    <Project Path="src/QuadroSense.IntegrationTests/QuadroSense.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

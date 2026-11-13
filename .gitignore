@@ -1,0 +1,56 @@
+# .NET build and publish output
+[Bb]in/
+[Oo]bj/
+/dist/
+/artifacts/
+/build-check/
+/build-check-obj/
+*.nupkg
+*.snupkg
+*.msix
+*.msixbundle
+*.appx
+*.appxbundle
+
+# IDE and per-user settings
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.pubxml.user
+*.Publish.xml
+*.DotSettings.user
+
+# Test results, coverage and logs
+/test-logs/
+TestResults/
+coverage/
+*.coverage
+*.coveragexml
+*.trx
+*.log
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+!.env.sample
+appsettings.Local.json
+appsettings.*.Local.json
+*.pfx
+*.p12
+*.key
+
+# Temporary and OS files
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+~$*
+.DS_Store
+Thumbs.db
+Desktop.ini
